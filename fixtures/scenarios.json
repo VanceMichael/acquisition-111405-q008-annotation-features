@@ -1,0 +1,167 @@
+[
+  {
+    "name": "multipart-feature",
+    "routes": [
+      {
+        "path": "/annotation",
+        "body": {
+          "release": "r1",
+          "regions": [
+            {
+              "id": "chr1",
+              "length": 1000
+            }
+          ],
+          "parts": [
+            "/part/1",
+            "/part/2"
+          ],
+          "sealed": true
+        },
+        "status": 200,
+        "method": "GET"
+      },
+      {
+        "path": "/part/1",
+        "body": "##gff-version 3\nchr1\tX\tCDS\t10\t20\t.\t+\t0\tID=c1;Parent=t1,t2;Name=A%3BB\n",
+        "status": 200,
+        "method": "GET"
+      },
+      {
+        "path": "/part/2",
+        "body": "chr1\tX\tCDS\t30\t40\t.\t+\t2\tID=c1;Parent=t1,t2\nchr1\tX\tmRNA\t1\t80\t.\t+\t.\tID=t1\nchr1\tX\tmRNA\t1\t90\t.\t+\t.\tID=t2\n",
+        "status": 200,
+        "method": "GET"
+      }
+    ],
+    "expected": [
+      {
+        "featureKey": "r1/chr1/c1",
+        "parents": [
+          "r1/chr1/t1",
+          "r1/chr1/t2"
+        ],
+        "segments": [
+          {
+            "start": 10,
+            "end": 20,
+            "phase": 0
+          },
+          {
+            "start": 30,
+            "end": 40,
+            "phase": 2
+          }
+        ]
+      }
+    ],
+    "forbidden": []
+  },
+  {
+    "name": "missing-parent",
+    "routes": [
+      {
+        "path": "/annotation",
+        "body": {
+          "release": "r2",
+          "regions": [
+            {
+              "id": "chr1",
+              "length": 100
+            }
+          ],
+          "parts": [
+            "/part/1"
+          ],
+          "sealed": true
+        },
+        "status": 200,
+        "method": "GET"
+      },
+      {
+        "path": "/part/1",
+        "body": "chr1\tX\texon\t1\t10\t.\t-\t.\tID=e1;Parent=absent\n",
+        "status": 200,
+        "method": "GET"
+      }
+    ],
+    "expected": [
+      {
+        "featureKey": "r2/chr1/e1",
+        "unresolvedParents": [
+          "r2/chr1/absent"
+        ]
+      }
+    ],
+    "forbidden": []
+  },
+  {
+    "name": "embedded-fasta",
+    "routes": [
+      {
+        "path": "/annotation",
+        "body": {
+          "release": "r2",
+          "regions": [
+            {
+              "id": "chr1",
+              "length": 100
+            }
+          ],
+          "parts": [
+            "/part/1"
+          ],
+          "sealed": true
+        },
+        "status": 200,
+        "method": "GET"
+      },
+      {
+        "path": "/part/1",
+        "body": "chr1\tX\texon\t1\t10\t.\t-\t.\tID=e1;Parent=absent\n##FASTA\n>chr1\nACGT\n",
+        "status": 200,
+        "method": "GET"
+      }
+    ],
+    "expected": [
+      {
+        "featureKey": "r2/chr1/e1",
+        "unresolvedParents": [
+          "r2/chr1/absent"
+        ]
+      }
+    ],
+    "forbidden": []
+  },
+  {
+    "name": "out-of-bounds-feature",
+    "routes": [
+      {
+        "path": "/annotation",
+        "body": {
+          "release": "r2",
+          "regions": [
+            {
+              "id": "chr1",
+              "length": 100
+            }
+          ],
+          "parts": [
+            "/part/1"
+          ],
+          "sealed": true
+        },
+        "status": 200,
+        "method": "GET"
+      },
+      {
+        "path": "/part/1",
+        "body": "chr1\tX\texon\t1\t101\t.\t-\t.\tID=e1\n",
+        "status": 200,
+        "method": "GET"
+      }
+    ],
+    "expected": [],
+    "forbidden": []
+  }
+]
