@@ -19,12 +19,13 @@ async function atomicWrite(path, content) {
 export async function openArchive(directory) {
   await mkdir(join(directory, 'raw'), {recursive: true});
   const indexPath = join(directory, 'index.json');
-  let state = {schema: 1, records: [], evidence: [], issues: []};
+  let state = {schema: 1, records: [], evidence: [], issues: [], sourceState: null};
   try { state = JSON.parse(await readFile(indexPath, 'utf8')); }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
   if (state.schema !== 1 || !Array.isArray(state.records) || !Array.isArray(state.evidence)) {
     throw new Error('资料索引版本或结构无效');
   }
+  if (!('sourceState' in state)) state.sourceState = null;
   for (const item of state.evidence) {
     if (!/^[a-f0-9]{64}$/.test(item.hash)) throw new Error('资料索引摘要无效');
     if (digest(await readFile(join(directory, 'raw', item.hash))) !== item.hash) throw new Error('原文摘要不匹配');
@@ -38,7 +39,7 @@ export async function openArchive(directory) {
       if (digest(bytes) !== hash) throw new Error('原文损坏');
       return bytes;
     },
-    commit({records = [], exchanges = [], issues = []}) {
+    commit({records = [], exchanges = [], issues = [], state: nextSourceState}) {
       const operation = tail.then(async () => {
         const next = structuredClone(state);
         for (const exchange of exchanges) {
@@ -56,6 +57,7 @@ export async function openArchive(directory) {
           }
         }
         next.issues.push(...structuredClone(issues));
+        if (nextSourceState !== undefined) next.sourceState = structuredClone(nextSourceState);
         await atomicWrite(indexPath, JSON.stringify(next, null, 2) + '\n');
         state = next;
         return structuredClone(state);
